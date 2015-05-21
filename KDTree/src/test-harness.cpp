@@ -26,16 +26,16 @@ using namespace std;
  * of the implementation, you will want to turn more and more of these
  * flags on.
  */
-#define BasicKDTreeTestEnabled          0 // Step one checks
-#define ModerateKDTreeTestEnabled       0
-#define HarderKDTreeTestEnabled         0
-#define EdgeCaseKDTreeTestEnabled       0
+#define BasicKDTreeTestEnabled          1 // Step one checks
+#define ModerateKDTreeTestEnabled       1
+#define HarderKDTreeTestEnabled         1
+#define EdgeCaseKDTreeTestEnabled       1
 #define MutatingKDTreeTestEnabled       1
 #define ThrowingKDTreeTestEnabled       1
 #define ConstKDTreeTestEnabled          1
 
-#define NearestNeighborTestEnabled      0 // Step two checks
-#define MoreNearestNeighborTestEnabled  0
+#define NearestNeighborTestEnabled      1 // Step two checks
+#define MoreNearestNeighborTestEnabled  1
 
 #define BasicCopyTestEnabled            0 // Step three checks
 #define ModerateCopyTestEnabled         0
@@ -540,9 +540,13 @@ void NearestNeighborTest() try {
     kd.insert(PointFromRange<4>(dataPoints[i], dataPoints[i] + 4), i);
 
   /* Check that calling nearest neighbor on a point in the tree yields that point. */
-  for (size_t i = 0; i < 16; ++i)
-    CheckCondition(kd.kNNValue(PointFromRange<4>(dataPoints[i], dataPoints[i] + 4), 1) == i, "Nearest neighbor of element is that element.");
+  for (size_t i = 0; i < 16; ++i) {
 
+
+
+    CheckCondition(kd.kNNValue(PointFromRange<4>(dataPoints[13], dataPoints[13] + 4), 1) == 13, "Nearest neighbor of element is that element.");
+
+  }
   /* Check that calling nearest neighbor on the test points yields the correct tree points. */
   for (size_t i = 0; i < 16; ++i)
     CheckCondition(kd.kNNValue(PointFromRange<4>(testPoints[i], testPoints[i] + 4), 1) == i, "Test point yielded correct nearest neighbor.");
@@ -754,9 +758,9 @@ int main() {
   ThrowingKDTreeTest();
   ConstKDTreeTest();
   
-//  /* Step Three Tests */
-//  NearestNeighborTest();
-//  MoreNearestNeighborTest();
+  /* Step Three Tests */
+  NearestNeighborTest();
+  MoreNearestNeighborTest();
 
 //  /* Step Four Tests */
 //  BasicCopyTest();

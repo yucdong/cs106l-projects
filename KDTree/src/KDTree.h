@@ -14,6 +14,8 @@
 #include "BoundedPQueue.h"
 #include <stdexcept>
 #include <cmath>
+#include <stack>
+#include <map>
 
 // "using namespace" in a header file is conventionally frowned upon, but I'm
 // including it here so that you may use things like size_t without having to
@@ -21,14 +23,20 @@
 using namespace std;
 
 template <size_t N, typename ElemType>
+class KDTree;
+
+template <size_t N, typename ElemType>
 class KDNode{
-public:
+private:
     Point<N> position;
     ElemType element;
+    size_t split;   // the dimension to compare
     KDNode *left;
     KDNode *right;
-    KDNode(Point<N> pos, ElemType elem = ElemType(), KDNode *le = NULL, KDNode *rt = NULL) : position(pos),
-            element(elem), left(le), right(rt) {};
+    KDNode(Point<N> pos, ElemType elem = ElemType(), size_t sp = 0, KDNode *le = NULL, KDNode *rt = NULL) : position(pos),
+            element(elem), split(sp), left(le), right(rt) {};
+
+    friend class KDTree<N, ElemType>;
 };
 
 
@@ -200,7 +208,7 @@ void KDTree<N,ElemType>::Destroy(KDNode<N, ElemType> *node) {
 template <size_t N, typename ElemType>
 KDNode<N, ElemType>* KDTree<N, ElemType>::Clone(KDNode<N, ElemType>* other) {
     if (other == NULL) return NULL;
-    KDNode<N, ElemType> *node = new KDNode<N, ElemType>(other->position, other->element);
+    KDNode<N, ElemType> *node = new KDNode<N, ElemType>(other->position, other->element, other->split);
     node->left = Clone(other->left);
     node->right = Clone(other->right);
     return node;
@@ -255,10 +263,10 @@ void KDTree<N, ElemType>::insert(const Point<N>& pt, const ElemType& value) {
         root = new KDNode<N, ElemType>(pt, value);
     } else if (cur != NULL && direction == LEFT) {
         sz++;
-        cur->left = new KDNode<N, ElemType>(pt,value);
+        cur->left = new KDNode<N, ElemType>(pt,value, (cur->split + 1) % dim);
     } else {
         sz++;
-        cur->right = new KDNode<N, ElemType>(pt, value);
+        cur->right = new KDNode<N, ElemType>(pt, value, (cur->split + 1) % dim);
     }
 }
 
@@ -293,11 +301,11 @@ ElemType& KDTree<N, ElemType>::operator[](const Point<N>& pt) {
     } else if (cur != NULL && direction == NODIR) {
         // Find
     } else if (cur != NULL && direction == LEFT) {
-        cur->left = new KDNode<N, ElemType>(pt);
+        cur->left = new KDNode<N, ElemType>(pt, ElemType(), (cur->split + 1) % dim);
         sz++;
         cur = cur->left;
     } else {
-        cur->right = new KDNode<N, ElemType>(pt);
+        cur->right = new KDNode<N, ElemType>(pt, ElemType(), (cur->split + 1) % dim);
         cur = cur->right;
         sz++;
     }
@@ -321,6 +329,96 @@ const ElemType& KDTree<N, ElemType>::at(const Point<N>& pt) const {
 
     if (cur == NULL) throw out_of_range("No Point in KDTREE");
     else return cur->element;
+}
+
+template <size_t N, typename ElemType>
+ElemType KDTree<N, ElemType>::kNNValue(const Point<N>& key, size_t k) const {
+
+    // Recording of the search path
+    stack<KDNode<N, ElemType>* > search_path;
+
+    double min_dist =  LONG_MAX;
+    Point<N> nearest;
+
+    // The Bounded Priority Queue
+    BoundedPQueue<ElemType> bqueue(k);
+    KDNode<N, ElemType> *curr = root;
+    while (curr != NULL) {
+        search_path.push(curr); // push current path node to stack
+
+        // Distance is the priority for this bqueue
+        double dist = Distance(curr->position, key);
+        bqueue.enqueue(curr->element, dist);
+
+        if (key[curr->split] <= curr->position[curr->split]) {
+            curr = curr->left;
+        } else {
+            curr = curr->right;
+        }
+    }
+
+    // BackTracking
+    KDNode<N, ElemType> *path_end = search_path.top();
+    nearest = path_end->position;
+    min_dist = Distance(key, nearest);
+
+    while (!search_path.empty()) {
+        curr = search_path.top();
+        KDNode<N, ElemType> *pkdnode = NULL;
+        search_path.pop();
+
+        // Calculate Distance
+        // if Distance is smaller, update the value
+        if (Distance(curr->position, key) < min_dist) {
+            nearest = curr->position;
+            min_dist = Distance(nearest, key);
+        }
+
+        // Calculate aligned Distance
+        // If the intersection happens, we need to dig down to branches
+        if (bqueue.maxSize() != bqueue.size() ||
+                fabs(key[curr->split] - curr->position[curr->split]) < bqueue.worst()) {
+            if (key[curr->split] <= curr->position[curr->split]) {
+                pkdnode = curr->right;
+            } else {
+                pkdnode = curr->left;
+            }
+
+            // A recursion to find the leaf node
+            while (pkdnode != NULL) {
+                search_path.push(pkdnode); // push current path node to stack
+
+                // Distance is the priority for this bqueue
+                double dist = Distance(pkdnode->position, key);
+                bqueue.enqueue(pkdnode->element, dist);
+
+                if (key[pkdnode->split] <= pkdnode->position[pkdnode->split]) {
+                    pkdnode = pkdnode->left;
+                } else {
+                    pkdnode = pkdnode->right;
+                }
+            }
+        }
+
+
+    }
+
+    // Return the frequent value
+    map<ElemType, int> elemCount;
+    ElemType ret;
+    int maxcount = -1;
+    while (!bqueue.empty()) {
+        ElemType cur = bqueue.dequeueMin();
+        elemCount[cur] += 1;
+        if (elemCount[cur] > maxcount) {
+            maxcount = elemCount[cur];
+            ret = cur;
+        }
+
+    }
+
+    return ret;
+
 }
 
 
