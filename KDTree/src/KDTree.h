@@ -208,7 +208,11 @@ void KDTree<N,ElemType>::Destroy(KDNode<N, ElemType> *node) {
 template <size_t N, typename ElemType>
 KDNode<N, ElemType>* KDTree<N, ElemType>::Clone(KDNode<N, ElemType>* other) {
     if (other == NULL) return NULL;
-    KDNode<N, ElemType> *node = new KDNode<N, ElemType>(other->position, other->element, other->split);
+
+    KDNode<N, ElemType> *node = NULL;
+
+    node = new KDNode<N, ElemType>(other->position, other->element, other->split);
+
     node->left = Clone(other->left);
     node->right = Clone(other->right);
     return node;
@@ -225,15 +229,26 @@ KDTree<N, ElemType>::~KDTree() {
 template <size_t N, typename ElemType>
 KDTree<N, ElemType>::KDTree(const KDTree& rhs) {
     // Destroy previous KD-Tree first
+    root = NULL;
     this->operator =(rhs);
 }
 
 template <size_t N, typename ElemType>
 KDTree<N, ElemType>& KDTree<N, ElemType>::operator=(const KDTree& rhs) {
-    sz = rhs.sz;
-    Destroy(root);
 
-    root = Clone(rhs.root);
+
+    KDNode<N, ElemType> *copy = NULL;
+    try {
+        copy = Clone(rhs.root);
+        Destroy(root);
+        sz = rhs.sz;
+        dim = rhs.dim;
+        root = copy;
+    } catch (...) {
+        Destroy(copy);
+    }
+
+    return *this;
 }
 
 template <size_t N, typename ElemType>
@@ -324,11 +339,7 @@ ElemType& KDTree<N, ElemType>::at(const Point<N>& pt) {
 
 template <size_t N, typename ElemType>
 const ElemType& KDTree<N, ElemType>::at(const Point<N>& pt) const {
-
-    const KDNode<N, ElemType> *cur = search(pt);
-
-    if (cur == NULL) throw out_of_range("No Point in KDTREE");
-    else return cur->element;
+    return const_cast<KDTree<N, ElemType>* >(this)->at(pt);
 }
 
 template <size_t N, typename ElemType>
