@@ -16,6 +16,8 @@
 #include <cmath>
 #include <stack>
 #include <map>
+#include <algorithm>
+#include <vector>
 
 // "using namespace" in a header file is conventionally frowned upon, but I'm
 // including it here so that you may use things like size_t without having to
@@ -44,6 +46,9 @@ template <size_t N, typename ElemType>
 class KDTree {
 public:
 
+    // Define ElemType to be value_type
+    // for simplification
+    typedef pair<Point<N>, ElemType> KDPair;
 
     // Constructor: KDTree();
     // Usage: KDTree<3, int> myTree;
@@ -65,6 +70,11 @@ public:
     // Deep-copies the contents of another KDTree into this one.
     KDTree(const KDTree& rhs);
     KDTree& operator=(const KDTree& rhs);
+
+    // Build KDTree from a bunch of data
+    // Need to sort and split to make the tree balanced
+    template <typename InputIterator>
+    KDTree(InputIterator first, InputIterator last);
     
     // size_t dimension() const;
     // Usage: size_t dim = kd.dimension();
@@ -126,6 +136,9 @@ private:
     KDNode<N, ElemType>* search(const Point<N>& pt) const;
     void Destroy(KDNode<N, ElemType>* node);
     KDNode<N, ElemType>* Clone(KDNode<N, ElemType>* other);
+
+    template <typename InputIterator>
+    KDNode<N, ElemType>* createKDTree(InputIterator first, InputIterator last, int level);
 
     const static int LEFT;
     const static int RIGHT;
@@ -341,6 +354,54 @@ template <size_t N, typename ElemType>
 const ElemType& KDTree<N, ElemType>::at(const Point<N>& pt) const {
     return const_cast<KDTree<N, ElemType>* >(this)->at(pt);
 }
+
+template <size_t N, typename ElemType>
+template <typename InputIterator>
+KDNode<N, ElemType>* KDTree<N, ElemType>::createKDTree(
+                                  InputIterator first, InputIterator last, int split) {
+
+
+    if (first > last) return NULL;
+    if (first == last) {
+        sz++;
+        return new KDNode<N, ElemType>(first->first, last->second, split);
+    }
+
+    // Sort this vector according to current split
+    // Use the split elem of Point<N> to sort this part of data.
+    // Use lambda Expression from C++11
+    sort(first, last, [=] (const KDPair &pva, const KDPair &pvb) {return pva.first[split] < pvb.first[split];});
+
+    // Recursively Construct subtrees(sort by certain dimension)
+    InputIterator mid = first + (last - first) / 2;
+
+    // Left Subtree : <
+    // Right Subtree : >=
+    // Need to find the first elem with split dim > previous one
+    while (true) {
+        InputIterator left = mid - 1;
+        if (left < first || mid->first[split] != left->first[split])
+            break;
+        else
+            mid = left;
+    }
+
+    KDNode<N, ElemType>* cur = new KDNode<N, ElemType>(mid->first, mid->second, split);
+    sz++;
+    cur->left = createKDTree(first, mid, (split + 1) % dim);
+    cur->right = createKDTree(mid + 1, last, (split + 1) % dim);
+    return cur;
+}
+
+
+template <size_t N, typename ElemType>
+template <typename InputIterator>
+KDTree<N, ElemType>::KDTree(InputIterator first, InputIterator last) {
+
+    root = createKDTree(first, last, 0);
+}
+
+
 
 template <size_t N, typename ElemType>
 ElemType KDTree<N, ElemType>::kNNValue(const Point<N>& key, size_t k) const {

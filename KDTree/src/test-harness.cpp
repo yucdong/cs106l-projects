@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <cstdarg>
 #include <set>
+#include <list>
 #include "KDTree.h"
 using namespace std;
 
@@ -39,6 +40,8 @@ using namespace std;
 
 #define BasicCopyTestEnabled            1 // Step three checks
 #define ModerateCopyTestEnabled         1
+
+#define BunchConstrucEnabled            1 // Step four checks
 
 /* A utility function to construct a Point from a range of iterators. */
 template <size_t N, typename IteratorType>
@@ -632,6 +635,38 @@ void MoreNearestNeighborTest() try {
   FailTest(e);
 }
 
+
+void BunchConstructTest() try {
+#if BunchConstrucEnabled
+    PrintBanner("Bunched Data Constructor Test");
+
+    vector<pair<Point<2>, int> > values;
+    values.push_back(make_pair(MakePoint(1.0, 1.0), 4));
+    values.push_back(make_pair(MakePoint(1.0, 2.0), 2));
+    values.push_back(make_pair(MakePoint(1.0, 3.0), 5));
+    values.push_back(make_pair(MakePoint(2.0, 3.0), 1));
+    values.push_back(make_pair(MakePoint(3.0, 3.0), 6));
+    values.push_back(make_pair(MakePoint(3.0, 4.0), 3));
+    values.push_back(make_pair(MakePoint(4.0, 5.0), 7));
+
+    CheckCondition(values.size() == 7, "Initial data has 7 members");
+
+    KDTree<2, int> tree(values.begin(), values.end());
+    CheckCondition(tree.size() == 7, "Bunch data all elements inserted.");
+
+
+
+
+
+
+
+#else
+    TestDisabled("BunchConstructTest");
+#endif
+} catch (const exception& e) {
+    FailTest(e);
+}
+
 /* Tests basic behavior of the copy constructor and assignment operator. */
 void BasicCopyTest() try {
 #if BasicCopyTestEnabled
@@ -766,6 +801,9 @@ int main() {
   BasicCopyTest();
   ModerateCopyTest();
 
+  /* Step Five Tests */
+  BunchConstructTest();
+
 #if (BasicKDTreeTestEnabled && \
      ModerateKDTreeTestEnabled && \
      HarderKDTreeTestEnabled &&   \
@@ -776,7 +814,8 @@ int main() {
      NearestNeighborTestEnabled &&  \
      MoreNearestNeighborTestEnabled && \
      BasicCopyTestEnabled && \
-     ModerateCopyTestEnabled)
+     ModerateCopyTestEnabled && \
+     BunchConstrucEnabled)
   cout << "All tests completed!  If they passed, you should be good to go!" << endl << endl;
 #else
   cout << "Not all tests were run.  Enable the rest of the tests, then run again." << endl << endl;
