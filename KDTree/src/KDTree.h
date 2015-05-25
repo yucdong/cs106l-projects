@@ -49,6 +49,7 @@ public:
     // Define ElemType to be value_type
     // for simplification
     typedef pair<Point<N>, ElemType> KDPair;
+    typedef typename vector<KDPair>::iterator KDIter;
 
     // Constructor: KDTree();
     // Usage: KDTree<3, int> myTree;
@@ -137,8 +138,8 @@ private:
     void Destroy(KDNode<N, ElemType>* node);
     KDNode<N, ElemType>* Clone(KDNode<N, ElemType>* other);
 
-    template <typename InputIterator>
-    KDNode<N, ElemType>* createKDTree(InputIterator first, InputIterator last, int level);
+
+    KDNode<N, ElemType>* createKDTree(vector<pair<Point<N>, ElemType>> vec, int split);
 
     const static int LEFT;
     const static int RIGHT;
@@ -356,15 +357,18 @@ const ElemType& KDTree<N, ElemType>::at(const Point<N>& pt) const {
 }
 
 template <size_t N, typename ElemType>
-template <typename InputIterator>
-KDNode<N, ElemType>* KDTree<N, ElemType>::createKDTree(
-                                  InputIterator first, InputIterator last, int split) {
+KDNode<N, ElemType>* KDTree<N, ElemType>::createKDTree(vector<pair<Point<N>, ElemType>> vec, int split) {
 
 
-    if (first > last) return NULL;
-    if (first == last) {
+
+
+    KDIter first = vec.begin();
+    KDIter last = vec.end();
+
+    if (first >= last) return NULL;
+    if (first == last - 1) {
         sz++;
-        return new KDNode<N, ElemType>(first->first, last->second, split);
+        return new KDNode<N, ElemType>(first->first, first->second, split);
     }
 
     // Sort this vector according to current split
@@ -373,13 +377,13 @@ KDNode<N, ElemType>* KDTree<N, ElemType>::createKDTree(
     sort(first, last, [=] (const KDPair &pva, const KDPair &pvb) {return pva.first[split] < pvb.first[split];});
 
     // Recursively Construct subtrees(sort by certain dimension)
-    InputIterator mid = first + (last - first) / 2;
+    KDIter mid = first + (last - first) / 2;
 
     // Left Subtree : <
     // Right Subtree : >=
     // Need to find the first elem with split dim > previous one
     while (true) {
-        InputIterator left = mid - 1;
+        KDIter left = mid - 1;
         if (left < first || mid->first[split] != left->first[split])
             break;
         else
@@ -388,8 +392,11 @@ KDNode<N, ElemType>* KDTree<N, ElemType>::createKDTree(
 
     KDNode<N, ElemType>* cur = new KDNode<N, ElemType>(mid->first, mid->second, split);
     sz++;
-    cur->left = createKDTree(first, mid, (split + 1) % dim);
-    cur->right = createKDTree(mid + 1, last, (split + 1) % dim);
+    if (first <= mid)
+        cur->left = createKDTree(vector<KDPair>(first, mid), (split + 1) % dim);
+
+    if (mid < last)
+        cur->right = createKDTree(vector<KDPair>(mid + 1, last), (split + 1) % dim);
     return cur;
 }
 
@@ -398,7 +405,12 @@ template <size_t N, typename ElemType>
 template <typename InputIterator>
 KDTree<N, ElemType>::KDTree(InputIterator first, InputIterator last) {
 
-    root = createKDTree(first, last, 0);
+    root = NULL;
+    dim = N;
+    sz = 0;
+
+    vector<pair<Point<N>, ElemType> > vec(first, last);
+    root = createKDTree(vec, 0);
 }
 
 
