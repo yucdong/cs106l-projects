@@ -251,16 +251,24 @@ template <size_t N, typename ElemType>
 KDTree<N, ElemType>& KDTree<N, ElemType>::operator=(const KDTree& rhs) {
 
 
-    KDNode<N, ElemType> *copy = NULL;
-    try {
-        copy = Clone(rhs.root);
-        Destroy(root);
-        sz = rhs.sz;
-        dim = rhs.dim;
-        root = copy;
-    } catch (...) {
-        Destroy(copy);
+    if (this != &rhs) {
+        KDNode<N, ElemType> *copy = NULL;
+        try {
+            copy = Clone(rhs.root);
+            Destroy(root);
+            sz = rhs.sz;
+            dim = rhs.dim;
+            root = copy;
+        } catch (...) {
+
+            // Error occurred during construction of copy
+            // Clean the copy data
+            // And re-throw the caught exception
+            Destroy(copy);
+            throw;
+        }
     }
+
 
     return *this;
 }
